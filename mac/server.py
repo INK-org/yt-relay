@@ -48,7 +48,7 @@ DOWNLOAD_TIMEOUT_SECONDS = 30 * 60
 MAX_UPLOAD_BYTES = 512 * 1024 * 1024
 # Rate-limit window.
 RATE_WINDOW_SECONDS = 24 * 60 * 60
-RATE_LIMIT = 5
+RATE_LIMIT = 20
 
 YT_URL_RE = re.compile(
     r"^https?://(?:www\.|m\.)?(?:youtube\.com/(?:watch\?[^ ]*v=|shorts/|live/|embed/)"

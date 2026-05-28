@@ -118,7 +118,7 @@ the top of [`frontend/app.js`](frontend/app.js).
 
 1. Browser POSTs `{url, passphrase}` to `https://yt.rentskill.ai/api/download`.
 2. Daemon checks passphrase (constant-time compare) and IP rate limit
-   (SQLite: ≤ 5 reqs / IP / 24h, IPs older than 24h purged).
+   (SQLite: ≤ 20 reqs / IP / 24h, IPs older than 24h purged).
 3. Daemon `osascript`s Downie with the URL, snapshots the watch folder.
 4. A worker thread polls the folder; once a media file's size is unchanged
    for 4 s and isn't a `.part`/`.crdownload`, it's done.
