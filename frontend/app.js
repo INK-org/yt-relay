@@ -46,6 +46,8 @@
     const copyBtn = $("copy-btn");
     const openBtn = $("open-btn");
 
+    const dismissBtn = $("dismiss-btn");
+
     const historyList = $("history");
     const historyEmpty = $("history-empty");
 
@@ -225,6 +227,18 @@
             submitBtn.disabled = false;
         }
     });
+
+    // ----- Dismiss / reset stuck or completed job -----
+    const dismissActiveJob = () => {
+        if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+        localStorage.removeItem(LS_ACTIVE_JOB);
+        hide(jobPanel);
+        hide(jobResult);
+        setError(jobError, "");
+        setError(formError, "");
+    };
+
+    dismissBtn.addEventListener("click", dismissActiveJob);
 
     // ----- Clipboard -----
     copyBtn.addEventListener("click", async () => {

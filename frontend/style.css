@@ -290,6 +290,16 @@ body {
     border-bottom: 1px solid var(--border);
 }
 
+.job-row-status {
+    align-items: center;
+}
+
+.dismiss-btn {
+    margin-left: auto;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.75rem;
+}
+
 .job-row:last-of-type { border-bottom: none; }
 
 .job-label {
