@@ -277,13 +277,29 @@ def wait_for_new_file(
     return None
 
 
+def _curl_form_file(file_path: Path) -> str:
+    """Build a curl -F file-upload value that survives commas / spaces /
+    emojis in the filename.
+
+    curl's -F parser uses `,` as a field separator within a part's value
+    and `;` as a part-attribute separator. Wrapping the path in literal
+    double quotes inside the form value tells curl the filename is the
+    quoted content. We also pin `filename=upload<ext>` so the upload
+    service sees a sane filename hint regardless of local weirdness.
+    """
+    ext = file_path.suffix or ".bin"
+    # Backslash-escape any " in the local path (rare but possible).
+    safe = str(file_path).replace('"', '\\"')
+    return f'@"{safe}";filename=upload{ext}'
+
+
 def _upload_litterbox_once(file_path: Path) -> str:
     proc = subprocess.run(
         [
             "curl", "-sS", "--fail",
             "-F", "reqtype=fileupload",
             "-F", f"time={LITTERBOX_RETENTION}",
-            "-F", f"fileToUpload=@{file_path}",
+            "-F", f"fileToUpload={_curl_form_file(file_path)}",
             "https://litterbox.catbox.moe/resources/internals/api.php",
         ],
         capture_output=True,
@@ -320,7 +336,7 @@ def _upload_gofile_once(file_path: Path) -> str:
     proc = subprocess.run(
         [
             "curl", "-sS", "--fail",
-            "-F", f"file=@{file_path}",
+            "-F", f"file={_curl_form_file(file_path)}",
             f"https://{server}.gofile.io/contents/uploadFile",
         ],
         capture_output=True, text=True, timeout=60 * 30,
