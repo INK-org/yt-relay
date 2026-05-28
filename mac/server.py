@@ -4,7 +4,7 @@ YT-relay Mac daemon.
 
 Receives a YouTube URL from the public frontend, hands it to Downie via
 AppleScript, watches a dedicated downloads folder for the finished file,
-uploads it to 0x0.st, deletes the local copy, and exposes the resulting
+uploads it to litterbox.catbox.moe, deletes the local copy, exposes the resulting
 public URL back to the frontend.
 
 Configuration is via environment variables (see config_from_env).
@@ -44,8 +44,10 @@ STABILITY_SECONDS = 4
 POLL_INTERVAL = 1.0
 # A job that produces no new file in this long is considered failed.
 DOWNLOAD_TIMEOUT_SECONDS = 30 * 60
-# 0x0.st's hard cap.
-MAX_UPLOAD_BYTES = 512 * 1024 * 1024
+# litterbox.catbox.moe's hard cap.
+MAX_UPLOAD_BYTES = 1024 * 1024 * 1024
+# Litterbox retention: 1h, 12h, 24h, or 72h.
+LITTERBOX_RETENTION = "24h"
 # Rate-limit window.
 RATE_WINDOW_SECONDS = 24 * 60 * 60
 RATE_LIMIT = 20
@@ -262,24 +264,30 @@ def wait_for_new_file(
     return None
 
 
-def upload_to_0x0(file_path: Path) -> str:
-    """Upload via curl and return the public URL."""
+def upload_to_litterbox(file_path: Path) -> str:
+    """Upload via curl and return the public URL.
+
+    Litterbox is the temporary-file sibling of catbox.moe — accepts files
+    up to 1 GB and expires them after 1h/12h/24h/72h. We use the form-style
+    API documented at https://catbox.moe/tools.php#litterbox.
+    """
     proc = subprocess.run(
         [
             "curl", "-sS", "--fail",
-            "-F", f"file=@{file_path}",
-            "-H", "User-Agent: yt-relay/1.0 (self-hosted)",
-            "https://0x0.st",
+            "-F", "reqtype=fileupload",
+            "-F", f"time={LITTERBOX_RETENTION}",
+            "-F", f"fileToUpload=@{file_path}",
+            "https://litterbox.catbox.moe/resources/internals/api.php",
         ],
         capture_output=True,
         text=True,
         timeout=60 * 30,
     )
     if proc.returncode != 0:
-        raise RuntimeError(f"0x0.st upload failed: {proc.stderr.strip() or proc.stdout.strip()}")
+        raise RuntimeError(f"litterbox upload failed: {proc.stderr.strip() or proc.stdout.strip()}")
     url = proc.stdout.strip()
-    if not url.startswith("https://0x0.st/"):
-        raise RuntimeError(f"unexpected response from 0x0.st: {url!r}")
+    if not url.startswith("https://litter.catbox.moe/"):
+        raise RuntimeError(f"unexpected response from litterbox: {url!r}")
     return url
 
 
@@ -349,13 +357,13 @@ def _run_job_inner(job_id: str, yt_url: str, cfg: Config, store: Store) -> None:
         store.update_job(
             job_id,
             status="error",
-            error=f"File is {size // (1024 * 1024)} MB which exceeds 0x0.st's 512 MB limit.",
+            error=f"File is {size // (1024 * 1024)} MB which exceeds litterbox's 1 GB limit.",
         )
         return
 
     store.update_job(job_id, status="uploading")
     try:
-        url = upload_to_0x0(new_file)
+        url = upload_to_litterbox(new_file)
     except Exception as e:  # noqa: BLE001
         store.update_job(job_id, status="error", error=f"Upload failed: {e}")
         return

@@ -134,7 +134,7 @@
     const STATUS_LABEL = {
         queued: "Queued",
         downloading: "Downie is downloading…",
-        uploading: "Uploading to 0x0.st…",
+        uploading: "Uploading to litterbox…",
         done: "Done",
         error: "Error",
     };

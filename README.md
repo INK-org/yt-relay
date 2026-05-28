@@ -1,6 +1,6 @@
 # YT Relay
 
-Public web page → your Mac's Downie → 0x0.st → public download link. Local copy
+Public web page → your Mac's Downie → litterbox.catbox.moe → public download link. Local copy
 deleted after upload.
 
 ```
@@ -13,7 +13,7 @@ deleted after upload.
 [ Python daemon on 127.0.0.1:8723 ]
        │ AppleScript                 ▲ curl -F file=@…
        ▼                             │
-   [ Downie.app ] → file on disk → [ 0x0.st ]
+   [ Downie.app ] → file on disk → [ litterbox ]
                                      │
                                      ▼
                               local file deleted
@@ -122,15 +122,14 @@ the top of [`frontend/app.js`](frontend/app.js).
 3. Daemon `osascript`s Downie with the URL, snapshots the watch folder.
 4. A worker thread polls the folder; once a media file's size is unchanged
    for 4 s and isn't a `.part`/`.crdownload`, it's done.
-5. Daemon `curl -F file=@…` to 0x0.st, gets back a URL.
+5. Daemon `curl -F fileToUpload=@…` to litterbox.catbox.moe, gets back a URL.
 6. Local file `unlink()`ed.
 7. Frontend polling `/api/status/<id>` sees `status: done` and the public URL.
 
 ## Limits & gotchas
 
-- 0x0.st caps at 512 MB. Bigger files fail at upload time with a clear error.
-- 0x0.st's retention shrinks with size; very large files may only live a day
-  or two. Smaller files live ~a month.
+- litterbox caps at 1 GB. Bigger files fail at upload time with a clear error.
+- litterbox files always expire in 24 hours regardless of size.
 - The daemon supports YouTube, YouTube Shorts, youtu.be, m.youtube.com.
   Other sites are rejected by the URL regex. Loosen it in
   [`mac/server.py`](mac/server.py) if you want.
