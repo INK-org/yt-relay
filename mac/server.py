@@ -277,13 +277,7 @@ def wait_for_new_file(
     return None
 
 
-def upload_to_litterbox(file_path: Path) -> str:
-    """Upload via curl and return the public URL.
-
-    Litterbox is the temporary-file sibling of catbox.moe — accepts files
-    up to 1 GB and expires them after 1h/12h/24h/72h. We use the form-style
-    API documented at https://catbox.moe/tools.php#litterbox.
-    """
+def _upload_litterbox_once(file_path: Path) -> str:
     proc = subprocess.run(
         [
             "curl", "-sS", "--fail",
@@ -297,11 +291,76 @@ def upload_to_litterbox(file_path: Path) -> str:
         timeout=60 * 30,
     )
     if proc.returncode != 0:
-        raise RuntimeError(f"litterbox upload failed: {proc.stderr.strip() or proc.stdout.strip()}")
+        raise RuntimeError(proc.stderr.strip() or proc.stdout.strip() or f"curl exit {proc.returncode}")
     url = proc.stdout.strip()
     if not url.startswith("https://litter.catbox.moe/"):
-        raise RuntimeError(f"unexpected response from litterbox: {url!r}")
+        raise RuntimeError(f"unexpected response: {url!r}")
     return url
+
+
+def _upload_gofile_once(file_path: Path) -> str:
+    """Fallback uploader. gofile.io has a two-step protocol: discover a
+    storage server, then POST to it. Returns the user-facing downloads
+    page URL (not a direct file URL — gofile doesn't expose those for
+    anonymous uploads)."""
+    # Step 1: pick a server.
+    proc = subprocess.run(
+        ["curl", "-sS", "--fail", "https://api.gofile.io/servers"],
+        capture_output=True, text=True, timeout=30,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(f"gofile server discovery failed: {proc.stderr.strip()}")
+    try:
+        servers = json.loads(proc.stdout)["data"]["servers"]
+        server = servers[0]["name"]
+    except (KeyError, IndexError, json.JSONDecodeError) as e:
+        raise RuntimeError(f"gofile server response malformed: {e}")
+
+    # Step 2: upload.
+    proc = subprocess.run(
+        [
+            "curl", "-sS", "--fail",
+            "-F", f"file=@{file_path}",
+            f"https://{server}.gofile.io/contents/uploadFile",
+        ],
+        capture_output=True, text=True, timeout=60 * 30,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(proc.stderr.strip() or f"curl exit {proc.returncode}")
+    try:
+        page_url = json.loads(proc.stdout)["data"]["downloadPage"]
+    except (KeyError, json.JSONDecodeError) as e:
+        raise RuntimeError(f"gofile upload response malformed: {e}")
+    return page_url
+
+
+def upload_to_litterbox(file_path: Path) -> str:
+    """Upload with retries + a gofile.io fallback.
+
+    Litterbox occasionally returns 5xx during load spikes; a brief retry
+    handles the vast majority of those. If litterbox still won't take it
+    after a few tries, we ship to gofile.io so the user gets *some*
+    working link instead of a hard failure.
+    """
+    backoffs = [0, 5, 15]  # seconds before each litterbox attempt
+    last_err: Exception | None = None
+    for delay in backoffs:
+        if delay:
+            time.sleep(delay)
+        try:
+            return _upload_litterbox_once(file_path)
+        except Exception as e:  # noqa: BLE001
+            last_err = e
+
+    # Litterbox exhausted — try gofile.io as a different-infrastructure
+    # fallback so the job still produces a usable link.
+    try:
+        return _upload_gofile_once(file_path)
+    except Exception as e:  # noqa: BLE001
+        raise RuntimeError(
+            f"litterbox failed after {len(backoffs)} tries ({last_err}); "
+            f"gofile fallback also failed: {e}"
+        )
 
 
 # --------------------------------------------------------------------------- #
