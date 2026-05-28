@@ -51,6 +51,9 @@ LITTERBOX_RETENTION = "24h"
 # Rate-limit window.
 RATE_WINDOW_SECONDS = 24 * 60 * 60
 RATE_LIMIT = 20
+# Max workers actually performing a download/upload at once. Extras stay
+# in `queued` status until a slot frees up.
+MAX_PARALLEL = 2
 
 YT_URL_RE = re.compile(
     r"^https?://(?:www\.|m\.)?(?:youtube\.com/(?:watch\?[^ ]*v=|shorts/|live/|embed/)"
@@ -180,6 +183,16 @@ class Store:
             row = cur.fetchone()
             return dict(row) if row else None
 
+    def list_active(self) -> list[dict[str, Any]]:
+        with self._lock:
+            cur = self._conn.execute(
+                "SELECT id, status, yt_url, filename, bytes, created_at "
+                "FROM jobs "
+                "WHERE status IN ('queued','downloading','uploading') "
+                "ORDER BY created_at ASC"
+            )
+            return [dict(r) for r in cur.fetchall()]
+
 
 # --------------------------------------------------------------------------- #
 # Downie + uploader                                                           #
@@ -295,9 +308,16 @@ def upload_to_litterbox(file_path: Path) -> str:
 # Worker                                                                      #
 # --------------------------------------------------------------------------- #
 
+# BoundedSemaphore caps the number of workers actually pulling a file
+# down/uploading at the same time. Surplus workers block here in run_job,
+# keeping their job in `queued` state until a slot opens.
+WORK_SEMAPHORE = threading.BoundedSemaphore(MAX_PARALLEL)
+
+
 def run_job(job_id: str, yt_url: str, cfg: Config, store: Store) -> None:
     try:
-        _run_job_inner(job_id, yt_url, cfg, store)
+        with WORK_SEMAPHORE:
+            _run_job_inner(job_id, yt_url, cfg, store)
     except Exception as e:  # noqa: BLE001
         # Anything that escapes the inner function (e.g. PermissionError on
         # the watch folder before macOS grants Full Disk Access) becomes a
@@ -428,6 +448,11 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urllib.parse.urlparse(self.path)
         if parsed.path == "/api/health":
             self._json(HTTPStatus.OK, {"ok": True})
+            return
+        if parsed.path == "/api/active":
+            # Public bulletin board — what's in flight right now, visible
+            # to anyone who can reach the API.
+            self._json(HTTPStatus.OK, {"active": self.store.list_active(), "max_parallel": MAX_PARALLEL})
             return
         if parsed.path.startswith("/api/status/"):
             job_id = parsed.path[len("/api/status/"):]

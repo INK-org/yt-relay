@@ -48,11 +48,17 @@
 
     const dismissBtn = $("dismiss-btn");
 
+    const queuePanel = $("queue-panel");
+    const queueList = $("queue-list");
+    const queueCount = $("queue-count");
+
     const historyList = $("history");
     const historyEmpty = $("history-empty");
 
     // ----- State -----
     let pollTimer = null;
+    let queueTimer = null;
+    const QUEUE_POLL_MS = 3000;
 
     // ----- Helpers -----
     const fmtBytes = (n) => {
@@ -79,6 +85,7 @@
         hide(authGate);
         show(app);
         renderHistory();
+        startQueuePolling();
         const active = localStorage.getItem(LS_ACTIVE_JOB);
         if (active) attachJob(active);
     };
@@ -87,6 +94,7 @@
         localStorage.removeItem(LS_PASS);
         localStorage.removeItem(LS_ACTIVE_JOB);
         if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+        if (queueTimer) { clearTimeout(queueTimer); queueTimer = null; }
         hide(app);
         show(authGate);
         authPass.value = "";
@@ -227,6 +235,73 @@
             submitBtn.disabled = false;
         }
     });
+
+    // ----- Active queue (public bulletin) -----
+    const ytIdFromUrl = (u) => {
+        try {
+            const url = new URL(u);
+            if (url.hostname === "youtu.be") return url.pathname.slice(1);
+            return url.searchParams.get("v") || url.pathname.split("/").pop() || u;
+        } catch { return u; }
+    };
+
+    const ageLabel = (createdAt) => {
+        const sec = Math.max(0, Math.floor(Date.now() / 1000 - createdAt));
+        if (sec < 60) return `${sec}s`;
+        if (sec < 3600) return `${Math.floor(sec / 60)}m`;
+        return `${Math.floor(sec / 3600)}h`;
+    };
+
+    const renderQueue = (items) => {
+        if (!items || items.length === 0) {
+            hide(queuePanel);
+            queueList.innerHTML = "";
+            queueCount.textContent = "";
+            return;
+        }
+        show(queuePanel);
+        queueCount.textContent = `${items.length}`;
+        const mineId = localStorage.getItem(LS_ACTIVE_JOB);
+        queueList.innerHTML = "";
+        for (const it of items) {
+            const li = document.createElement("li");
+            li.className = "queue-item" + (it.id === mineId ? " is-mine" : "");
+
+            const status = document.createElement("span");
+            status.className = "q-status";
+            status.dataset.state = it.status;
+            status.textContent = it.status;
+            li.appendChild(status);
+
+            const title = document.createElement("span");
+            title.className = "q-title";
+            title.textContent = it.filename || ytIdFromUrl(it.yt_url);
+            li.appendChild(title);
+
+            const age = document.createElement("span");
+            age.className = "q-age";
+            age.textContent = ageLabel(it.created_at);
+            li.appendChild(age);
+
+            queueList.appendChild(li);
+        }
+    };
+
+    const pollQueue = async () => {
+        try {
+            const res = await fetch(`${BACKEND}/api/active`, { cache: "no-store" });
+            const body = await res.json();
+            renderQueue(body.active || []);
+        } catch {
+            // Network blip — leave the previous render in place.
+        }
+        queueTimer = setTimeout(pollQueue, QUEUE_POLL_MS);
+    };
+
+    const startQueuePolling = () => {
+        if (queueTimer) return;
+        pollQueue();
+    };
 
     // ----- Dismiss / reset stuck or completed job -----
     const dismissActiveJob = () => {
