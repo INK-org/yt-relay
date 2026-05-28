@@ -29,7 +29,16 @@ if [ -z "${CLOUDFLARED_BIN}" ]; then
     exit 1
 fi
 
-PYTHON_BIN="$(command -v python3)"
+# Prefer Homebrew python if present — TCC handles brew-installed binaries
+# more reliably for launchd-spawned processes than the SIP-protected
+# /usr/bin/python3 stub (which exec's CommandLineTools Python.app).
+if [ -x "/opt/homebrew/bin/python3" ]; then
+    PYTHON_BIN="/opt/homebrew/bin/python3"
+elif [ -x "/usr/local/bin/python3" ]; then
+    PYTHON_BIN="/usr/local/bin/python3"
+else
+    PYTHON_BIN="$(command -v python3)"
+fi
 
 SERVER_PLIST="${LAUNCH_DIR}/gd.ink.yt-relay.plist"
 TUNNEL_PLIST="${LAUNCH_DIR}/gd.ink.yt-relay-tunnel.plist"
