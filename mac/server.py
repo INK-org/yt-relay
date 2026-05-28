@@ -194,7 +194,15 @@ def trigger_downie(yt_url: str) -> None:
     Downie -> Preferences -> Downloads; we just hand off the URL.
     """
     safe_url = yt_url.replace("\\", "\\\\").replace('"', '\\"')
-    script = f'tell application "Downie" to open all URLs in text "{safe_url}"'
+    # `open all URLs in text` adds to the queue; `start queue` kicks it off
+    # (no-op if already running). Without start queue, Downie may sit on
+    # accumulated URLs without doing anything.
+    script = (
+        f'tell application "Downie"\n'
+        f'    open all URLs in text "{safe_url}"\n'
+        f'    start queue\n'
+        f'end tell'
+    )
     subprocess.run(
         ["osascript", "-e", script],
         check=True,
@@ -280,8 +288,26 @@ def upload_to_0x0(file_path: Path) -> str:
 # --------------------------------------------------------------------------- #
 
 def run_job(job_id: str, yt_url: str, cfg: Config, store: Store) -> None:
+    try:
+        _run_job_inner(job_id, yt_url, cfg, store)
+    except Exception as e:  # noqa: BLE001
+        # Anything that escapes the inner function (e.g. PermissionError on
+        # the watch folder before macOS grants Full Disk Access) becomes a
+        # clean error status instead of silently killing the worker thread.
+        store.update_job(job_id, status="error", error=f"worker crashed: {e}")
+
+
+def _run_job_inner(job_id: str, yt_url: str, cfg: Config, store: Store) -> None:
     store.update_job(job_id, status="downloading")
-    cfg.download_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        cfg.download_dir.mkdir(parents=True, exist_ok=True)
+    except PermissionError as e:
+        store.update_job(
+            job_id,
+            status="error",
+            error=f"Cannot access {cfg.download_dir}: {e}. Grant Full Disk Access to /usr/bin/python3 in System Settings → Privacy & Security, then `launchctl unload && load` the daemon.",
+        )
+        return
     seen_before = snapshot_dir(cfg.download_dir)
     started_at = time.time()
     try:
