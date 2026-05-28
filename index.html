@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22white%22 stroke-width=%222%22><path d=%22M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4%22/><polyline points=%227 10 12 15 17 10%22/><line x1=%2212%22 y1=%2215%22 x2=%2212%22 y2=%223%22/></svg>">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+    <meta name="googlebot" content="noindex, nofollow">
+    <title>YT Relay</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- AUTH GATE -->
+    <div id="auth-gate" class="auth-gate">
+        <div class="auth-box">
+            <div class="auth-logo" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="48" height="48">
+                    <rect x="2" y="2" width="20" height="20" rx="2"/>
+                    <path d="M10 8l6 4-6 4V8z" fill="currentColor"/>
+                </svg>
+            </div>
+            <h1>YT Relay</h1>
+            <p>Enter access code to continue</p>
+            <form id="auth-form" autocomplete="off">
+                <input type="password" id="auth-password" placeholder="Access code" autocomplete="off" required>
+                <button type="submit">Enter</button>
+            </form>
+            <p id="auth-error" class="auth-error hidden">Invalid access code</p>
+        </div>
+    </div>
+
+    <!-- APP -->
+    <div id="app" class="app hidden">
+        <header class="header">
+            <div class="header-left">
+                <span class="logo" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                </span>
+                <h1>YT Relay</h1>
+            </div>
+            <div class="header-right">
+                <button id="logout-btn" class="ghost-btn" title="Forget access code">
+                    Lock
+                </button>
+            </div>
+        </header>
+
+        <main class="content">
+            <section class="panel">
+                <h2 class="panel-title">Paste a YouTube link</h2>
+                <p class="panel-sub">Downie grabs it on the Mac, the file lands on 0x0.st, the Mac copy is wiped. You get a temporary link.</p>
+
+                <form id="download-form" class="url-form" autocomplete="off">
+                    <input
+                        type="url"
+                        id="url-input"
+                        placeholder="https://youtube.com/watch?v=..."
+                        required
+                        autocomplete="off"
+                        spellcheck="false"
+                    >
+                    <button type="submit" id="submit-btn">Send to Downie</button>
+                </form>
+
+                <p id="form-error" class="form-error hidden"></p>
+            </section>
+
+            <section id="job-panel" class="panel hidden">
+                <div class="job-row">
+                    <span class="job-label">Status</span>
+                    <span id="job-status" class="job-status">queued</span>
+                </div>
+                <div class="job-row" id="job-file-row" hidden>
+                    <span class="job-label">File</span>
+                    <span id="job-file" class="job-mono"></span>
+                </div>
+                <div class="job-row" id="job-size-row" hidden>
+                    <span class="job-label">Size</span>
+                    <span id="job-size" class="job-mono"></span>
+                </div>
+                <div class="job-row" id="job-id-row">
+                    <span class="job-label">Job</span>
+                    <span id="job-id" class="job-mono"></span>
+                </div>
+
+                <div id="job-progress" class="progress">
+                    <div class="progress-bar"></div>
+                </div>
+
+                <div id="job-result" class="job-result hidden">
+                    <label class="job-label" for="result-url">Public link</label>
+                    <div class="result-row">
+                        <input id="result-url" type="text" readonly>
+                        <button id="copy-btn" class="primary-btn" type="button">Copy</button>
+                        <a id="open-btn" class="ghost-btn" target="_blank" rel="noopener">Open</a>
+                    </div>
+                    <p class="job-note">Files on 0x0.st auto-expire — bigger files expire sooner.</p>
+                </div>
+
+                <p id="job-error" class="form-error hidden"></p>
+            </section>
+
+            <section class="panel quiet">
+                <h2 class="panel-title small">Recent</h2>
+                <ul id="history" class="history"></ul>
+                <p id="history-empty" class="muted">Nothing yet.</p>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <span class="muted">5 downloads per IP per 24h. YouTube URLs only.</span>
+            <span class="footer-sep" aria-hidden="true">•</span>
+            <span class="muted">
+                built by
+                <a href="https://siddatwork.com" target="_blank" rel="noopener" class="footer-link">SIDDATWORK&reg;</a>
+            </span>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
