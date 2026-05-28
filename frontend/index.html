@@ -52,7 +52,7 @@
         <main class="content">
             <section class="panel">
                 <h2 class="panel-title">Paste a YouTube link</h2>
-                <p class="panel-sub">Downie grabs it on the Mac, the file lands on litterbox.catbox.moe, the Mac copy is wiped. You get a temporary link.</p>
+                <p class="panel-sub">Drop in a URL and you'll get a temporary download link in seconds.</p>
 
                 <form id="download-form" class="url-form" autocomplete="off">
                     <input
@@ -63,7 +63,7 @@
                         autocomplete="off"
                         spellcheck="false"
                     >
-                    <button type="submit" id="submit-btn">Send to Downie</button>
+                    <button type="submit" id="submit-btn">Get link</button>
                 </form>
 
                 <p id="form-error" class="form-error hidden"></p>
@@ -99,7 +99,7 @@
                         <button id="copy-btn" class="primary-btn" type="button">Copy</button>
                         <a id="open-btn" class="ghost-btn" target="_blank" rel="noopener">Open</a>
                     </div>
-                    <p class="job-note">Hosted on litterbox.catbox.moe — link expires in 24 hours.</p>
+                    <p class="job-note">Link expires in 24 hours.</p>
                 </div>
 
                 <p id="job-error" class="form-error hidden"></p>
@@ -120,9 +120,11 @@
         <footer class="footer">
             <span class="muted">20 downloads per IP per 24h. YouTube URLs only.</span>
             <span class="footer-sep" aria-hidden="true">•</span>
-            <span class="muted">
+            <span class="muted footer-attrib">
                 built by
-                <a href="https://siddatwork.com" target="_blank" rel="noopener" class="footer-link">SIDDATWORK&reg;</a>
+                <a href="https://siddatwork.com" target="_blank" rel="noopener" class="footer-logo-link" aria-label="SIDDATWORK">
+                    <img class="footer-logo" src="https://siddatwork.com/wp-content/uploads/2021/07/SAW-logo-r.svg" alt="SIDDATWORK">
+                </a>
             </span>
         </footer>
     </div>

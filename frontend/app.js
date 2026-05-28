@@ -141,8 +141,8 @@
     // ----- Job lifecycle -----
     const STATUS_LABEL = {
         queued: "Queued",
-        downloading: "Downie is downloading…",
-        uploading: "Uploading to litterbox…",
+        downloading: "Fetching…",
+        uploading: "Preparing link…",
         done: "Done",
         error: "Error",
     };
